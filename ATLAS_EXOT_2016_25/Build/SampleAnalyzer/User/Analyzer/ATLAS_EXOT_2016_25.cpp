@@ -24,9 +24,9 @@ bool ATLAS_EXOT_2016_25::Initialize(const MA5::Configuration& cfg, const std::ma
 
 // =====Declare the signal regions in this analysis=====
   Manager()->AddRegionSelection("RESOLVED");
+  Manager()->AddRegionSelection("MERGED");
 
-//  Manager()->AddCut("ElectronMuonVeto", "RESOLVED");
-  Manager()->AddCut("Trigger & ElectronMuonVeto", "RESOLVED");
+  Manager()->AddCut("RESOLVED Trigger & ElectronMuonVeto", "RESOLVED");
   Manager()->AddCut("RESOLVED MET cut", "RESOLVED");
   Manager()->AddCut("RESOLVED PtTrkMiss cut", "RESOLVED");
   Manager()->AddCut("RESOLVED min.dPhi(MET,Jet) cut", "RESOLVED");
@@ -41,8 +41,21 @@ bool ATLAS_EXOT_2016_25::Initialize(const MA5::Configuration& cfg, const std::ma
   Manager()->AddCut("RESOLVED # BJet cut", "RESOLVED");
   Manager()->AddCut("RESOLVED HTRatio cut", "RESOLVED");
 
+  Manager()->AddCut("MERGED Trigger & ElectronMuonVeto", "MERGED");
+  Manager()->AddCut("MERGED MET cut", "MERGED");
+//  Manager()->AddCut("MERGED PtTrkMiss cut", "MERGED");
+  Manager()->AddCut("MERGED min.dPhi(MET,Jet) cut", "MERGED");
+  Manager()->AddCut("MERGED dPhi(MET,TrkMiss) cut", "MERGED");
+  Manager()->AddCut("MERGED # fatJet cut", "MERGED");
+  Manager()->AddCut("MERGED # Tau cut", "MERGED");
+
+
+
   math_pi = 3.141592;
 
+
+  Manager()->AddHisto("before few cuts # centralJet",10, 0,10);
+  Manager()->AddHisto("after few cuts # centralJet",10, 0,10);
 
   return true;
 }
@@ -81,24 +94,10 @@ bool ATLAS_EXOT_2016_25::Execute(SampleFormat& sample, const EventFormat& event)
 
 
 //Defining the containers
-   vector<const RecJetFormat*> Jets, centralJets;
-   vector<const RecJetFormat*> fatJets, awayjets;
+   vector<const RecJetFormat*> Jets, centralJets, forwardJets;
+   vector<const RecJetFormat*> fatJets, awayJets;
    vector<const RecLeptonFormat*> Muons;
    vector<const RecLeptonFormat*> Electrons;
-
-//Jets
-  double allHT = 0.;
-  for(unsigned int i=0; i<event.rec()->jets().size(); i++){
-    const RecJetFormat *this_jet = &(event.rec()->jets()[i]);
-    if( this_jet->pt() > 20.0 && fabs(this_jet->eta()) < 2.5 ){
-      centralJets.push_back(this_jet);
-    }
-    if((this_jet->pt() > 30.0 && fabs(this_jet->eta())>2.5 && fabs(this_jet->eta())<4.5)
-    || ( this_jet->pt() > 20.0 && fabs(this_jet->eta()) < 2.5 )){
-      Jets.push_back(this_jet);
-      allHT += this_jet->pt();
-    }
-  }
 
 //Fat jets
   for(unsigned int i=0; i<event.rec()->fatjets().size(); i++){
@@ -108,6 +107,33 @@ bool ATLAS_EXOT_2016_25::Execute(SampleFormat& sample, const EventFormat& event)
     }
   }
 
+
+//Jets
+  double allHT = 0.;
+  for(unsigned int i=0; i<event.rec()->jets().size(); i++){
+    const RecJetFormat *this_jet = &(event.rec()->jets()[i]);
+    if( this_jet->pt() > 20.0 && fabs(this_jet->eta()) < 2.5 ){
+      centralJets.push_back(this_jet);
+    }
+    if( this_jet->pt() > 30.0 && fabs(this_jet->eta())>2.5 && fabs(this_jet->eta())<4.5){
+      forwardJets.push_back(this_jet);
+    }
+    if((this_jet->pt() > 30.0 && fabs(this_jet->eta())>2.5 && fabs(this_jet->eta())<4.5)
+    || ( this_jet->pt() > 20.0 && fabs(this_jet->eta()) < 2.5 )){
+      Jets.push_back(this_jet);
+      allHT += this_jet->pt();
+    }
+  }
+
+  if(fatJets.size() > 0){
+    for(unsigned int i=0; i<Jets.size(); i++){
+      const RecJetFormat *this_jet = Jets.at(i);
+      double dr = this_jet->dr(fatJets.at(0));
+
+      if(dr > 1.0) awayJets.push_back(this_jet);
+    }
+  }
+  Manager()->FillHisto("before few cuts # centralJet", centralJets.size());
 
 //Electrons
   for(unsigned int i=0; i<event.rec()->electrons().size(); i++){
@@ -141,9 +167,11 @@ bool ATLAS_EXOT_2016_25::Execute(SampleFormat& sample, const EventFormat& event)
     TrkMiss += this_track4vec;
   }
   TrkMiss.SetPxPyPzE(-TrkMiss.Px(), -TrkMiss.Py(), TrkMiss.Pz(), TrkMiss.E());
-
 //Denominator for cutflow
-  if(!Manager()->ApplyCut(Muons.size() == 0 && Electrons.size() == 0 && MET.Pt() > 110., "Trigger & ElectronMuonVeto")) return true;
+  if(!Manager()->ApplyCut(Muons.size() == 0 && Electrons.size() == 0, "RESOLVED Trigger & ElectronMuonVeto")) return true;
+//  if(!Manager()->ApplyCut(Muons.size() == 0 && Electrons.size() == 0 && MET.Pt() > 110., "RESOLVED Trigger & ElectronMuonVeto")) return true;
+  if(!Manager()->ApplyCut(Muons.size() == 0 && Electrons.size() == 0 && MET.Pt() > 110., "MERGED Trigger & ElectronMuonVeto")) return true;
+
 
 //Define 2 different regions
   int region = 0;
@@ -151,36 +179,40 @@ bool ATLAS_EXOT_2016_25::Execute(SampleFormat& sample, const EventFormat& event)
   if((MET.Pt() > 500.)) region = 2;//MERGED
 
   if(!Manager()->ApplyCut(region == 1, "RESOLVED MET cut")) return true;
-//  if(!Manager()->ApplyCut(region == 2, "MERGED MET cut")) return true;
-
+  if(!Manager()->ApplyCut(region == 2, "MERGED MET cut")) return true;
 
 //Resolved region
   if( region == 1 ){
     vector<const RecJetFormat*> hJets;
-
     int NBJet = 0;
-    for(int i=0; i<centralJets.size(); i++){
+    for(unsigned int i=0; i<centralJets.size(); i++){
       if(centralJets.at(i)->btag()){
         hJets.push_back(centralJets.at(i));
         NBJet ++;
       }
     }
-    for(int i=0; i<centralJets.size(); i++){
+    for(unsigned int i=0; i<centralJets.size(); i++){
       if(!centralJets.at(i)->btag()) hJets.push_back(centralJets.at(i));
     }
 
     if(NBJet!=2) if(!Manager()->ApplyCut((TrkMiss.Pt() > 30.), "RESOLVED PtTrkMiss cut")) return true;
 
     bool mindPhiMETJets_big = true;
-    for(int i=0; i<centralJets.size(); i++){
-      double this_dPhi = GetdPhi(centralJets.at(i)->phi(), MET.Phi());
+    for(unsigned int i=0; i<Jets.size(); i++){
+      double this_dPhi = GetdPhi(Jets.at(i)->phi(), MET.Phi());
       if(this_dPhi < math_pi/9) mindPhiMETJets_big = false;
       if(i==3) break;
     }
+    if(Jets.size() == 0) mindPhiMETJets_big = false;
     if(!Manager()->ApplyCut((mindPhiMETJets_big), "RESOLVED min.dPhi(MET,Jet) cut")) return true;
 
     double dPhiMETTrkMiss = GetdPhi(TrkMiss.Phi(),MET.Phi());
     if(!Manager()->ApplyCut((dPhiMETTrkMiss < math_pi/2 ),"RESOLVED dPhi(MET,TrkMiss) cut")) return true;
+
+//    Manager()->FillHisto("# allJet", Jets.size());
+    Manager()->FillHisto("after few cuts # centralJet", centralJets.size());
+//    Manager()->FillHisto("# BJet", NBJet);
+
 
     if(!Manager()->ApplyCut((centralJets.size() > 1),"RESOLVED # Jet cut")) return true;
 
@@ -205,7 +237,7 @@ bool ATLAS_EXOT_2016_25::Execute(SampleFormat& sample, const EventFormat& event)
 
 
     MALorentzVector hCandidate4vec, hJets4vec[2];
-    for(int i=0; i<2; i++){
+    for(unsigned int i=0; i<2; i++){
       hJets4vec[i].SetPxPyPzE(hJets.at(i)->px(), hJets.at(i)->py(), hJets.at(i)->pz(), hJets.at(i)->e());
     }
     hCandidate4vec = hJets4vec[0]+hJets4vec[1];
@@ -217,23 +249,54 @@ bool ATLAS_EXOT_2016_25::Execute(SampleFormat& sample, const EventFormat& event)
 
     if(!Manager()->ApplyCut((hJets4vec[0].DeltaR(hJets4vec[1]) < 1.8), "RESOLVED dR(DiJet) cut")) return true;
 
-    if(!Manager()->ApplyCut((NBJet > 0 && NBJet < 3), "RESOLVED # BJet cut")) return true;
-
+    if(!Manager()->ApplyCut(NBJet < 3, "RESOLVED # BJet cut")) return true;
     double allHT=0., hjetsHT=0.;
-    for(int i=0; i<Jets.size(); i++){
+    for(unsigned int i=0; i<Jets.size(); i++){
       allHT += Jets.at(i)->pt();
     }
-    for(int i=0; i<hJets.size(); i++){
+    for(unsigned int i=0; i<2; i++){
       hjetsHT += hJets.at(i)->pt();
-      if(i==2) break;
+    }
+    if((forwardJets.size()!=0) || (hJets.size()>2)){
+      if((forwardJets.size()!=0) && (hJets.size()>2)){
+        if(forwardJets.at(0)->pt() > hJets.at(2)->pt()) hjetsHT += forwardJets.at(0)->pt();
+        else hjetsHT += hJets.at(2)->pt();
+      }
+      else if((forwardJets.size()!=0)) hjetsHT += forwardJets.at(0)->pt();
+      else hjetsHT += hJets.at(2)->pt();
     }
     if(!Manager()->ApplyCut((hjetsHT/allHT > 0.63), "RESOLVED HTRatio cut")) return true;
+
   }
 
 
 
 //Merged region
   if(region == 2){
+
+    bool mindPhiMETJets_big = true;
+    for(unsigned int i=0; i<Jets.size(); i++){
+      double this_dPhi = GetdPhi(Jets.at(i)->phi(), MET.Phi());
+      if(this_dPhi < math_pi/9) mindPhiMETJets_big = false;
+      if(i==3) break;
+    }
+    if(Jets.size() == 0) mindPhiMETJets_big = false;
+    if(!Manager()->ApplyCut((mindPhiMETJets_big), "MERGED min.dPhi(MET,Jet) cut")) return true;
+
+    double dPhiMETTrkMiss = GetdPhi(TrkMiss.Phi(),MET.Phi());
+    if(!Manager()->ApplyCut((dPhiMETTrkMiss < math_pi/2 ),"MERGED dPhi(MET,TrkMiss) cut")) return true;
+
+    if(!Manager()->ApplyCut((fatJets.size() > 0),"MERGED # fatJet cut")) return true;
+
+    double veto_tau = true;
+    for(unsigned int i=0; i<event.rec()->taus().size(); i++){
+      const RecTauFormat *this_tau = &(event.rec()->taus()[i]);
+      double dr = this_tau->dr(fatJets.at(0));
+
+      if(dr < 1.0){ veto_tau = false; break;}
+    }
+
+    if(!Manager()->ApplyCut(veto_tau, "MERGED # Tau cut")) return true;
 
 
   }
