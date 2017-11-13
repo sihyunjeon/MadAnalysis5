@@ -24,38 +24,42 @@ bool ATLAS_EXOT_2016_25::Initialize(const MA5::Configuration& cfg, const std::ma
 
 // =====Declare the signal regions in this analysis=====
   Manager()->AddRegionSelection("RESOLVED");
-  Manager()->AddRegionSelection("MERGED");
+//  Manager()->AddRegionSelection("MERGED");
 
-  Manager()->AddCut("RESOLVED Trigger & ElectronMuonVeto", "RESOLVED");
-  Manager()->AddCut("RESOLVED MET cut", "RESOLVED");
-  Manager()->AddCut("RESOLVED PtTrkMiss cut", "RESOLVED");
-  Manager()->AddCut("RESOLVED min.dPhi(MET,Jet) cut", "RESOLVED");
-  Manager()->AddCut("RESOLVED dPhi(MET,TrkMiss) cut", "RESOLVED");
-  Manager()->AddCut("RESOLVED # Jet cut", "RESOLVED");
-  Manager()->AddCut("RESOLVED PtLeadingJet cut", "RESOLVED");
-  Manager()->AddCut("RESOLVED HT cut", "RESOLVED");
-  Manager()->AddCut("RESOLVED dPhi(DiJet) cut", "RESOLVED");
-  Manager()->AddCut("RESOLVED dPhi(MET,Higgs) cut", "RESOLVED");
-  Manager()->AddCut("RESOLVED # Tau cut", "RESOLVED");
-  Manager()->AddCut("RESOLVED dR(DiJet) cut", "RESOLVED");
-  Manager()->AddCut("RESOLVED # BJet cut", "RESOLVED");
-  Manager()->AddCut("RESOLVED HTRatio cut", "RESOLVED");
+  Manager()->AddCut("RESOLVED_Trigger_&_ElectronMuonVeto", "RESOLVED");
+  Manager()->AddCut("RESOLVED_MET_cut", "RESOLVED");
+  Manager()->AddCut("RESOLVED_PtTrkMiss_cut", "RESOLVED");
+  Manager()->AddCut("RESOLVED_min.dPhi(MET,Jet)_cut", "RESOLVED");
+  Manager()->AddCut("RESOLVED_dPhi(MET,TrkMiss)_cut", "RESOLVED");
+  Manager()->AddCut("RESOLVED_nJet_cut", "RESOLVED");
+  Manager()->AddCut("RESOLVED_PtLeadingJet_cut", "RESOLVED");
+  Manager()->AddCut("RESOLVED_HT_cut", "RESOLVED");
+  Manager()->AddCut("RESOLVED_dPhi(DiJet)_cut", "RESOLVED");
+  Manager()->AddCut("RESOLVED_dPhi(MET,Higgs)_cut", "RESOLVED");
+  Manager()->AddCut("RESOLVED_nTau_cut", "RESOLVED");
+  Manager()->AddCut("RESOLVED_dR(DiJet)_cut", "RESOLVED");
+  Manager()->AddCut("RESOLVED_nBJet_cut", "RESOLVED");
+  Manager()->AddCut("RESOLVED_HTRatio_cut", "RESOLVED");
+//  Manager()->AddCut("RESOLVED_massHiggs_cut", "RESOLVED");
+//  Manager()->AddCut("RESOLVED_1BJet_cut", "RESOLVED");
+  Manager()->AddCut("RESOLVED_2BJet_cut", "RESOLVED");
 
+/*
   Manager()->AddCut("MERGED Trigger & ElectronMuonVeto", "MERGED");
   Manager()->AddCut("MERGED MET cut", "MERGED");
-//  Manager()->AddCut("MERGED PtTrkMiss cut", "MERGED");
+  Manager()->AddCut("MERGED PtTrkMiss cut", "MERGED");
   Manager()->AddCut("MERGED min.dPhi(MET,Jet) cut", "MERGED");
   Manager()->AddCut("MERGED dPhi(MET,TrkMiss) cut", "MERGED");
   Manager()->AddCut("MERGED # fatJet cut", "MERGED");
-  Manager()->AddCut("MERGED # Tau cut", "MERGED");
+  Manager()->AddCut("MERGED # Tau cut", "MERGED");*/
 
 
 
   math_pi = 3.141592;
 
-
-  Manager()->AddHisto("before few cuts # centralJet",10, 0,10);
-  Manager()->AddHisto("after few cuts # centralJet",10, 0,10);
+  Manager()->AddHisto("trkmiss",10, 0,200);
+//  Manager()->AddHisto("before few cuts # centralJet",10, 0,10);
+//  Manager()->AddHisto("after few cuts # centralJet",10, 0,10);
 
   return true;
 }
@@ -133,7 +137,7 @@ bool ATLAS_EXOT_2016_25::Execute(SampleFormat& sample, const EventFormat& event)
       if(dr > 1.0) awayJets.push_back(this_jet);
     }
   }
-  Manager()->FillHisto("before few cuts # centralJet", centralJets.size());
+//  Manager()->FillHisto("before few cuts # centralJet", centralJets.size());
 
 //Electrons
   for(unsigned int i=0; i<event.rec()->electrons().size(); i++){
@@ -168,9 +172,9 @@ bool ATLAS_EXOT_2016_25::Execute(SampleFormat& sample, const EventFormat& event)
   }
   TrkMiss.SetPxPyPzE(-TrkMiss.Px(), -TrkMiss.Py(), TrkMiss.Pz(), TrkMiss.E());
 //Denominator for cutflow
-  if(!Manager()->ApplyCut(Muons.size() == 0 && Electrons.size() == 0, "RESOLVED Trigger & ElectronMuonVeto")) return true;
+  if(!Manager()->ApplyCut(Muons.size() == 0 && Electrons.size() == 0 && MET.Pt() > 110, "RESOLVED_Trigger_&_ElectronMuonVeto")) return true;
 //  if(!Manager()->ApplyCut(Muons.size() == 0 && Electrons.size() == 0 && MET.Pt() > 110., "RESOLVED Trigger & ElectronMuonVeto")) return true;
-  if(!Manager()->ApplyCut(Muons.size() == 0 && Electrons.size() == 0 && MET.Pt() > 110., "MERGED Trigger & ElectronMuonVeto")) return true;
+//  if(!Manager()->ApplyCut(Muons.size() == 0 && Electrons.size() == 0 && MET.Pt() > 110., "MERGED Trigger & ElectronMuonVeto")) return true;
 
 
 //Define 2 different regions
@@ -178,8 +182,8 @@ bool ATLAS_EXOT_2016_25::Execute(SampleFormat& sample, const EventFormat& event)
   if((MET.Pt() > 150.) && (MET.Pt() < 500.)) region = 1;//RESOLVED
   if((MET.Pt() > 500.)) region = 2;//MERGED
 
-  if(!Manager()->ApplyCut(region == 1, "RESOLVED MET cut")) return true;
-  if(!Manager()->ApplyCut(region == 2, "MERGED MET cut")) return true;
+  if(!Manager()->ApplyCut(region == 1, "RESOLVED_MET_cut")) return true;
+//  if(!Manager()->ApplyCut(region == 2, "MERGED MET cut")) return true;
 
 //Resolved region
   if( region == 1 ){
@@ -195,7 +199,7 @@ bool ATLAS_EXOT_2016_25::Execute(SampleFormat& sample, const EventFormat& event)
       if(!centralJets.at(i)->btag()) hJets.push_back(centralJets.at(i));
     }
 
-    if(NBJet!=2) if(!Manager()->ApplyCut((TrkMiss.Pt() > 30.), "RESOLVED PtTrkMiss cut")) return true;
+    if(!Manager()->ApplyCut((TrkMiss.Pt() > 30.), "RESOLVED_PtTrkMiss_cut")) return true;
 
     bool mindPhiMETJets_big = true;
     for(unsigned int i=0; i<Jets.size(); i++){
@@ -204,19 +208,15 @@ bool ATLAS_EXOT_2016_25::Execute(SampleFormat& sample, const EventFormat& event)
       if(i==3) break;
     }
     if(Jets.size() == 0) mindPhiMETJets_big = false;
-    if(!Manager()->ApplyCut((mindPhiMETJets_big), "RESOLVED min.dPhi(MET,Jet) cut")) return true;
+    if(!Manager()->ApplyCut((mindPhiMETJets_big), "RESOLVED_min.dPhi(MET,Jet)_cut")) return true;
 
     double dPhiMETTrkMiss = GetdPhi(TrkMiss.Phi(),MET.Phi());
-    if(!Manager()->ApplyCut((dPhiMETTrkMiss < math_pi/2 ),"RESOLVED dPhi(MET,TrkMiss) cut")) return true;
-
-//    Manager()->FillHisto("# allJet", Jets.size());
-    Manager()->FillHisto("after few cuts # centralJet", centralJets.size());
-//    Manager()->FillHisto("# BJet", NBJet);
+    if(!Manager()->ApplyCut((dPhiMETTrkMiss < math_pi/2 ),"RESOLVED_dPhi(MET,TrkMiss)_cut")) return true;
 
 
-    if(!Manager()->ApplyCut((centralJets.size() > 1),"RESOLVED # Jet cut")) return true;
+    if(!Manager()->ApplyCut((centralJets.size() > 1),"RESOLVED_nJet_cut")) return true;
 
-    if(!Manager()->ApplyCut((centralJets.at(0)->pt() > 45.), "RESOLVED PtLeadingJet cut")) return true;
+    if(!Manager()->ApplyCut((centralJets.at(0)->pt() > 45.), "RESOLVED_PtLeadingJet_cut")) return true;
 
     bool centralHT_sum_big = false;
     if(centralJets.size() == 2){
@@ -230,10 +230,10 @@ bool ATLAS_EXOT_2016_25::Execute(SampleFormat& sample, const EventFormat& event)
       }
     }
 
-    if(!Manager()->ApplyCut((centralHT_sum_big), "RESOLVED HT cut")) return true;
+    if(!Manager()->ApplyCut((centralHT_sum_big), "RESOLVED_HT_cut")) return true;
 
     double dPhiHiggsDiJet = GetdPhi(hJets.at(0)->phi(),hJets.at(1)->phi());
-    if(!Manager()->ApplyCut((dPhiHiggsDiJet < (7.*math_pi/9)), "RESOLVED dPhi(DiJet) cut")) return true;
+    if(!Manager()->ApplyCut((dPhiHiggsDiJet < (7.*math_pi/9)), "RESOLVED_dPhi(DiJet)_cut")) return true;
 
 
     MALorentzVector hCandidate4vec, hJets4vec[2];
@@ -243,13 +243,13 @@ bool ATLAS_EXOT_2016_25::Execute(SampleFormat& sample, const EventFormat& event)
     hCandidate4vec = hJets4vec[0]+hJets4vec[1];
 
     double dPhiMETHiggs = GetdPhi(hCandidate4vec.Phi(), MET.Phi());
-    if(!Manager()->ApplyCut((dPhiMETHiggs > (2.*math_pi/3)), "RESOLVED dPhi(MET,Higgs) cut")) return true;
+    if(!Manager()->ApplyCut((dPhiMETHiggs > (2.*math_pi/3)), "RESOLVED_dPhi(MET,Higgs)_cut")) return true;
 
-    if(!Manager()->ApplyCut((event.rec()->taus().size() == 0), "RESOLVED # Tau cut")) return true;
+    if(!Manager()->ApplyCut((event.rec()->taus().size() == 0), "RESOLVED_nTau_cut")) return true;
 
-    if(!Manager()->ApplyCut((hJets4vec[0].DeltaR(hJets4vec[1]) < 1.8), "RESOLVED dR(DiJet) cut")) return true;
+    if(!Manager()->ApplyCut((hJets4vec[0].DeltaR(hJets4vec[1]) < 1.8), "RESOLVED_dR(DiJet)_cut")) return true;
 
-    if(!Manager()->ApplyCut(NBJet < 3, "RESOLVED # BJet cut")) return true;
+    if(!Manager()->ApplyCut(NBJet < 3, "RESOLVED_nBJet_cut")) return true;
     double allHT=0., hjetsHT=0.;
     for(unsigned int i=0; i<Jets.size(); i++){
       allHT += Jets.at(i)->pt();
@@ -265,14 +265,19 @@ bool ATLAS_EXOT_2016_25::Execute(SampleFormat& sample, const EventFormat& event)
       else if((forwardJets.size()!=0)) hjetsHT += forwardJets.at(0)->pt();
       else hjetsHT += hJets.at(2)->pt();
     }
-    if(!Manager()->ApplyCut((hjetsHT/allHT > 0.63), "RESOLVED HTRatio cut")) return true;
+    if(!Manager()->ApplyCut((hjetsHT/allHT > 0.63), "RESOLVED_HTRatio_cut")) return true;
+
+//    if(!Manager()->ApplyCut(((hCandidate4vec.M() > 50 && hCandidate4vec.M() < 280)), "RESOLVED_massHiggs_cut")) return true;
+//    if(!Manager()->ApplyCut(NBJet == 1, "RESOLVED_1BJet_cut")) return true;
+    if(!Manager()->ApplyCut(NBJet == 2, "RESOLVED_2BJet_cut")) return true;
+
 
   }
 
 
 
 //Merged region
-  if(region == 2){
+/*  if(region == 2){
 
     bool mindPhiMETJets_big = true;
     for(unsigned int i=0; i<Jets.size(); i++){
@@ -300,9 +305,9 @@ bool ATLAS_EXOT_2016_25::Execute(SampleFormat& sample, const EventFormat& event)
 
 
   }
+*/
 
-
-  return true;
+  return false;
 }
 
 
